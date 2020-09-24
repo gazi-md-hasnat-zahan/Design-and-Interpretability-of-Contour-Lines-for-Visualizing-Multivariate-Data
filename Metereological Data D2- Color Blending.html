@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+	</head>
+
+	<body>
+
+<svg width="800" height="800" stroke="#fff" stroke-width="0.5" id="svg5">
+	<image href="background/papertop back.PNG" style="opacity:.5; height: 101%">
+</svg>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/d3-hsv.v0.1.min.js"></script>
+<script src="https://d3js.org/d3-contour.v1.min.js"></script>
+<script src="outliersFilter.js"></script>
+<script src="simplify-edited.js"></script>
+
+
+<p id="Display_XY">This is to display X and Y position of mouse</p>
+<p id="Display_A_ContourBandThreshold_XY">This is to display the threhold value of A contour band the mouse pointer is currently in</p>
+
+<script>
+
+// function zoomFunction(){
+// 	d3.selectAll("path")
+// 	.attr("transform", "translate(" + d3.event.translate +
+// 	") scale (" + d3.event.scale + ")");
+// }
+//
+// var zoom = d3.zoom()
+// 							.scaleExtent([0.2,10])
+// 							.on("zoom", zoomFunction);
+var svg5 = d3.select("#svg5")
+						// .attr("fill","white")
+						.on('mousemove', mouseEvent);
+						// .call(zoom)
+var svgwidth = +svg5.attr("width");
+var svgheight = +svg5.attr("height");
+
+// svg5.call(d3.zoom()
+// 					.scaleExtent([0,10])
+// 					.translateExtent([[0, 0], [svgwidth, svgheight]])
+// 						.on("zoom", function () {
+// 										var transform = d3.zoomTransform(this);
+// 			              svg5.attr("transform", "translate(" + transform.x + "," + transform.y + ") scale(" + transform.k + ")")
+// 			      }))
+
+var jsonfilename = "Data/real-paper top custom120.json";
+
+d3.json(jsonfilename, function(error, dataset) {
+if (error) throw error;
+
+	thickness = 9;
+
+	vWidth = dataset.width;
+	vHeight = dataset.height;
+	mapRatio = +svg5.attr("width")/vWidth;
+	latitude = vHeight;
+	longitude = vWidth;
+
+	console.log('Actual TSK: ', dataset.TSK);
+	filtered_TSK = filterOutliers(dataset.TSK)
+	console.log('Filtered TSK: ', filtered_TSK);
+	console.log('Actual SMOIS: ', dataset.SMOIS);
+	filtered_SMOIS = filterOutliers(dataset.SMOIS);
+	console.log('Filtered SMOIS: ', filtered_SMOIS);
+	console.log('Actual PSFC: ', dataset.PSFC);
+	filtered_PSFC = filterOutliers(dataset.PSFC)
+	console.log('Filtered PSFC: ', filtered_PSFC);
+	console.log('Actual ALBEDO: ', dataset.ALBEDO);
+	filtered_ALBEDO = filterOutliers(dataset.ALBEDO)
+	console.log('Filtered ALBEDO: ', filtered_ALBEDO);
+
+	window.normalize = function(arr){
+		var result = arr.concat();
+		max = d3.max(result);
+		min = d3.min(result);
+		for (i=0;i<arr.length;i++){
+			result[i] = (result[i]-min)/(max-min);
+		}
+		return result;
+	}
+
+	normalized_TSK = normalize(filtered_TSK)
+	console.log('Normalized TSK: ', normalized_TSK);
+	normalized_SMOIS = normalize(filtered_SMOIS)
+	console.log('Normalized SMOIS: ', normalized_SMOIS);
+	normalized_PSFC = normalize(filtered_PSFC)
+	console.log('Normalized PSFC: ', normalized_PSFC);
+	normalized_ALBEDO = normalize(filtered_ALBEDO)
+	console.log('Normalized ALBEDO: ', normalized_ALBEDO);
+
+	dataset.TSK = normalized_TSK;
+	dataset.SMOIS = normalized_SMOIS;
+	dataset.PSFC = normalized_PSFC;
+	dataset.ALBEDO = normalized_ALBEDO;
+
+	window.meanMatrix = function(arr){
+		row = latitude;
+		col = longitude;
+		var meanmat = arr.concat();
+		for(i=2;i<row-2;i++){
+			for(j=2;j<col-2;j++){
+				meanmat[i*latitude+j] = (arr[(i-2)*latitude+(j-2)] + arr[(i-2)*latitude+(j-1)] + arr[(i-2)*latitude+j] + arr[(i-2)*latitude+(j+1)] + arr[(i-2)*latitude+(j+2)] +
+													arr[(i-1)*latitude+(j-2)] + arr[(i-1)*latitude+(j-1)] + arr[(i-1)*latitude+j] + arr[(i-1)*latitude+(j+1)] + arr[(i-1)*latitude+(j+2)] +
+													arr[i*latitude+(j-2)] + arr[i*latitude+(j-1)] + arr[i*latitude+j] + arr[i*latitude+(j+1)] + arr[i*latitude+(j+2)] +
+													arr[(i+1)*latitude+(j-2)] + arr[(i+1)*latitude+(j-1)] + arr[(i+1)*latitude+j] + arr[(i+1)*latitude+(j+1)] + arr[(i+1)*latitude+(j+2)] +
+													arr[(i+2)*latitude+(j-2)] + arr[(i+2)*latitude+(j-1)] + arr[(i+2)*latitude+j] + arr[(i+2)*latitude+(j+1)] + arr[(i+2)*latitude+(j+2)]) / 25;
+
+			}
+		}
+		return meanmat;
+	}
+
+	meanMatrix_TSK = meanMatrix(normalized_TSK);
+	console.log('Mean Matrix TSK: ', meanMatrix_TSK);
+	meanMatrix_SMOIS = meanMatrix(normalized_SMOIS);
+	console.log('Mean Matrix SMOIS: ', meanMatrix_SMOIS);
+	meanMatrix_PSFC = meanMatrix(normalized_PSFC);
+	console.log('Mean Matrix PSFC: ', meanMatrix_PSFC);
+	meanMatrix_ALBEDO = meanMatrix(normalized_ALBEDO);
+	console.log('Mean Matrix ALBEDO: ', meanMatrix_ALBEDO);
+
+	dataset.TSK = meanMatrix_TSK;
+	dataset.SMOIS = meanMatrix_SMOIS;
+	dataset.PSFC = meanMatrix_PSFC;
+	dataset.ALBEDO = meanMatrix_ALBEDO;
+
+
+		// var Amin = d3.min(dataset.PSFC);
+		// var Amax = d3.max(dataset.PSFC);
+		// var Bmin = d3.min(dataset.TSK);
+		// var Bmax = d3.max(dataset.TSK);
+		// var Cmin = d3.min(dataset.SMOIS);
+		// var Cmax = d3.max(dataset.SMOIS);
+
+		window.getQuartileValue = function (arr, q){
+			ind = arr.length * q;
+			if (ind - Math.floor(ind) == 0){
+				 res = arr[Math.floor(ind)-1];
+				 return parseFloat(res.toFixed(2));
+			}
+			else{
+				k = Math.floor(ind)-1;
+				f = ind - Math.floor(ind);
+				res = ((1-f)*arr[k]) + (f* arr[k+1]);
+				return parseFloat(res.toFixed(2));
+			}
+		}
+
+		window.getQuartiles = function(arr){
+			var values = arr.concat();
+			// Then sort
+			values.sort( function(a, b) {
+							return a - b;
+					 });
+			var q1 = getQuartileValue (values, .25);
+			var q2 = getQuartileValue (values, .5);
+			var q3 = getQuartileValue (values, .75);
+
+			return [0, q1, q2, q3]
+		}
+
+		// C = dataset.PSFC;
+		// A = dataset.TSK;
+		// B = dataset.SMOIS;
+		// D = dataset.ALBEDO;
+
+		C = dataset.PSFC;
+		D = dataset.TSK;
+		B = dataset.SMOIS;
+		A = dataset.ALBEDO;
+
+		thresholds_A = getQuartiles(A);
+		thresholds_B = getQuartiles(B);
+		thresholds_C = getQuartiles(C);
+		thresholds_D = getQuartiles(D);
+
+		console.log('A quartiles:', thresholds_A);
+		console.log('B quartiles:', thresholds_B);
+		console.log('C quartiles:', thresholds_C);
+		console.log('D quartiles:', thresholds_D);
+
+	colorB = d3.scaleLinear().domain([0,.25,.5,.75]).range(["#fffcfc", "#fcc5c5", "#f88d8e","#f55657"]);
+	colorC = d3.scaleLinear().domain([0,.25,.5,.75]).range(["#fcfcff", "#c5c5fc", "#8d8ef8", "#5657f5"]);
+	var i0 = d3.interpolateHsvLong(d3.hsv(120, 1, 0.65), d3.hsv(60, 1, 0.90)),
+		i1 = d3.interpolateHsvLong(d3.hsv(60, 1, 0.90), d3.hsv(0, 0, 0.95)),
+		interpolateTerrain = function(t) {
+			return t < 0.5 ? i0(t * 2) : i1((t - 0.5) * 2);
+		},
+		color = d3.scaleSequential(interpolateTerrain).domain([0, 1]);
+
+
+	contourOutput_A = d3.contours()
+			.size([dataset.width, dataset.height])
+			.thresholds(thresholds_A)
+		(A)
+	contourOutput_B = d3.contours()
+			.size([dataset.width, dataset.height])
+			.thresholds(thresholds_B)
+		(B)
+	contourOutput_C = d3.contours()
+			.size([dataset.width, dataset.height])
+			.thresholds(thresholds_C)
+		(C)
+	contourOutput_D = d3.contours()
+			.size([dataset.width, dataset.height])
+			.thresholds(thresholds_D)
+		(D)
+
+	console.log('The A contours are: ',contourOutput_A);
+	console.log('The B contours are: ',contourOutput_B);
+	console.log('The C contours are: ',contourOutput_C);
+	console.log('The C contours are: ',contourOutput_D);
+
+	window.inside = function (point, poly) {
+		// ray-casting algorithm based on
+	  // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+	  var x = point[0], y = point[1];
+	  var inside = false;
+	  for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+	      var xi = poly[i][0], yi = poly[i][1];
+	      var xj = poly[j][0], yj = poly[j][1];
+	      var intersect = ((yi > y) != (yj > y))
+	          && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+	      if (intersect) inside = !inside;
+	  }
+	  return inside;
+	};
+
+	window.getContourLabel = function(xMouse, yMouse, contourOutput){
+		contourWithPointTreshold = 0;
+		for (index = 0; index < contourOutput.length; index++){
+			for (i = 0; i < contourOutput[index].coordinates.length; i++) {
+				// isInside = inside([xMouse/mapRatio,yMouse/mapRatio],contourOutput[index].coordinates[i][0]);
+				isInside = inside([xMouse,yMouse],contourOutput[index].coordinates[i][0]);
+				// IsCursorInContour(isInside,contourOutput_p[index]);
+				if (isInside == true ){
+					if (contourOutput[index].coordinates[i].length == 1){
+						// contour doesn't have holes in it
+						contourWithPointTreshold = contourOutput[index].value;
+					}
+					else{
+						//cotour has holes in it
+						inHoleFlag = 0;
+						for(j=1; j<contourOutput[index].coordinates[i].length; j++){
+							// inHole = inside([xMouse/mapRatio,yMouse/mapRatio],contourOutput[index].coordinates[i][j]);
+							inHole = inside([xMouse,yMouse],contourOutput[index].coordinates[i][j]);
+							if(inHole == true){
+								// inside a hole, then check if it is in subsequent smaller threshold holes or not
+								inHoleFlag++;
+								for (k=index-1;k>=0;k--){
+									for (l=0;l<contourOutput[k].coordinates.length;l++){
+										if(contourOutput[k].coordinates[l].length == 1){
+											continue;
+										}
+										else{
+											for(m=1;m<contourOutput[k].coordinates[l].length;m++){
+												// if (inside([xMouse/mapRatio,yMouse/mapRatio],contourOutput[k].coordinates[l][m]) == true){
+												if (inside([xMouse,yMouse],contourOutput[k].coordinates[l][m]) == true){
+													// inside on more level inside
+													inHoleFlag++;
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+						contourWithPointTreshold = contourOutput[index-inHoleFlag].value;
+					}
+				}
+			}
+		}
+		return contourWithPointTreshold;
+	}
+
+	// draw the individual contour lines
+	window.drawA = function() {
+		svg5.selectAll("path")
+			.data(contourOutput_A)
+			.enter().append("path")
+			.attr("d", d3.geoPath(d3.geoIdentity().scale(mapRatio)))
+			.attr("fill", function(d) {
+				return color(d.value);
+			})
+			// .attr("opacity", .5)
+			.attr("stroke", "black")
+			.attr("stroke-width", .5)
+		// .attr("stroke-opacity", .1);
+	};
+	// drawA();
+	window.drawB = function() {
+		svg5.selectAll("path")
+			.data(contourOutput_B)
+			.enter().append("path")
+			.attr("d", d3.geoPath(d3.geoIdentity().scale(mapRatio)))
+			.attr("fill", function(d) {
+				return color(d.value);
+			})
+			// .attr("opacity", .5)
+			.attr("stroke", "black")
+			.attr("stroke-width", .5)
+		// .attr("stroke-opacity", .1);
+	};
+	// drawB();
+	window.drawC = function() {
+		svg5.selectAll("path")
+			.data(contourOutput_C)
+			.enter().append("path")
+			.attr("d", d3.geoPath(d3.geoIdentity().scale(mapRatio)))
+			.attr("fill", function(d) {
+				return color(d.value)
+			})
+			// .attr("opacity", .5)
+			.attr("stroke", "black")
+			.attr("stroke-width", .5)
+		// .attr("stroke-opacity", .1);
+	};
+	// drawC();
+	window.drawD = function() {
+		svg5.selectAll("path")
+			.data(contourOutput_D)
+			.enter().append("path")
+			.attr("d", d3.geoPath(d3.geoIdentity().scale(mapRatio)))
+			// .attr("fill", "grey")
+			.attr("fill", function(d) {
+				return color(d.value)
+			})
+			// .attr("opacity", .5)
+			.attr("stroke", "black")
+			.attr("stroke-width", .5)
+		// .attr("opacity", .3);
+	};
+	// drawD();
+
+	window.polygonArea = function(pointArray){
+		area = 0;   // Accumulates area
+		numPoints = pointArray.length;
+		j = numPoints-1;
+		X = new Array(pointArray.length);
+		Y = new Array(pointArray.length);
+
+		for (i=0; i<pointArray.length; i++){
+			X[i] = pointArray[i][0];
+			Y[i] = pointArray[i][1];
+		}
+
+		for (i=0; i<numPoints; i++){
+		  area +=  (X[j]+X[i]) * (Y[j]-Y[i]);
+		  j = i;  //j is previous vertex to i
+		}
+		  return area/2;
+	}
+
+	var lineGenerator = d3.line()
+		.curve(d3.curveLinear)
+
+	window.drawlineSimple = function(line){
+		line = line.map(function(x) { return [x[0] * mapRatio,x[1] * mapRatio]; })
+		lineout =  lineGenerator(line)
+		svg5.append("path")
+			 .attr("stroke", "black")
+			 .attr("stroke-width", .5)
+			.attr("d",lineout)
+	};
+
+	window.drawlineColorBlended = function(line, threshval){
+
+		line = line.map(function(x) { return [x[0] * mapRatio,x[1] * mapRatio]; })
+		lineLen = Math.sqrt(Math.pow((line[0][0]-line[1][0]), 2) + Math.pow((line[0][1]-line[1][1]), 2));
+		numCut = Math.floor(lineLen);
+
+		for (xx=0;xx<=numCut+1;xx++){
+			if(xx == 0){
+				pointXprev = line[0][0];
+				pointYprev = line[0][1];
+			}
+
+			// cutLine.push([(lineSlice[0][0]+lineSlice[1][0])*(i/(numCut+1)),(lineSlice[0][1]+lineSlice[1][1])*(i/(numCut+1))]);
+			PointX = line[0][0]+(line[1][0]-line[0][0])*(xx/(numCut+1));
+			PointY = line[0][1]+(line[1][1]-line[0][1])*(xx/(numCut+1));
+
+			lineout =  lineGenerator([[pointXprev, pointYprev],[PointX, PointY]])
+
+			bval = getContourLabel(PointX/mapRatio, PointY/mapRatio, contourOutput_B);
+			cval = getContourLabel(PointX/mapRatio, PointY/mapRatio, contourOutput_C);
+			dval = getContourLabel(PointX/mapRatio, PointY/mapRatio, contourOutput_D);
+
+			var Bcolor = colorB(bval);
+			var Ccolor = colorC(cval);
+
+			BcolorR = parseInt(Bcolor.split(',')[0].split('(')[1]);
+			BcolorG = parseInt(Bcolor.split(',')[1]);
+			BcolorB = parseInt(Bcolor.split(',')[2].split(')')[0]);
+
+			CcolorR = parseInt(Ccolor.split(',')[0].split('(')[1]);
+			CcolorG = parseInt(Ccolor.split(',')[1]);
+			CcolorB = parseInt(Ccolor.split(',')[2].split(')')[0]);
+
+			blendR = (BcolorR * CcolorR) / 255;
+			blendG = (BcolorG * CcolorG) / 255;
+			blendB = (BcolorB * CcolorB) / 255;
+
+			colorBlend = "rgb("+blendR.toString()+", "+blendG.toString()+", "+blendB.toString()+")";
+
+			lineStrokeWidth = thickness*dval+1;
+
+			// console.log(lineout);
+			svg5.append("path")
+			.attr("d",lineout)
+				 .attr("stroke", colorBlend)
+				 .attr("stroke-width", lineStrokeWidth)
+				 .attr("fill", colorBlend)
+				 // .attr("stroke-opacity",1)
+				 // .attr("stroke-linecap", "butt")
+
+			pointXprev = PointX;
+			pointYprev = PointY;
+		}
+	};
+
+	contourtoWorkon = contourOutput_A;
+	for (len=0;len<contourtoWorkon.length;len++){
+		for(cor=0;cor<contourtoWorkon[len]["coordinates"].length;cor++){
+			for(cornum=0;cornum<contourtoWorkon[len]["coordinates"][cor].length;cornum++){
+				var simplified = contourtoWorkon[len]["coordinates"][cor][cornum];
+				if (Math.abs(polygonArea(Object.values(simplified))) > 20){
+					for(y=0;y<simplified.length-1;y++){
+						lineSlice = simplified.slice(y,y+2);
+						lineLength = Math.sqrt(Math.pow((lineSlice[0][0]-lineSlice[1][0]), 2) + Math.pow((lineSlice[0][1]-lineSlice[1][1]), 2));
+						if ((lineSlice[0][0] >= vHeight-1 || lineSlice[0][0] <= 1 || lineSlice[0][1] >= vWidth-1 || lineSlice[0][1] <= 1) && (lineSlice[1][0] >= vWidth-1 || lineSlice[1][0] <= 1 || lineSlice[1][1] >= vHeight-1 || lineSlice[1][1] <= 1)) {
+							drawlineSimple(lineSlice);
+						}
+						else{
+							var numCut = Math.floor(lineLength);
+							var cutLine = [lineSlice[0]];
+							// console.log('Before Cut: ', lineSlice, ' / length: ', lineLength, ' / cuts needed: ', numCut);
+							for (i=1;i<=numCut;i++){
+								cutLine.push([lineSlice[0][0]+(lineSlice[1][0]-lineSlice[0][0])*(i/(numCut+1)),lineSlice[0][1]+(lineSlice[1][1]-lineSlice[0][1])*(i/(numCut+1))]);
+							}
+							cutLine.push(lineSlice[1]);
+							// console.log('After cut: ', cutLine);
+							for(jj=0;jj<cutLine.length-1;jj++){
+								drawlineColorBlended(cutLine.slice(jj,jj+2), contourtoWorkon[len]["value"]);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	svg5.append("rect")
+		.attr("x", 667)
+		.attr("y", 689)
+		.attr("width", 130)
+		.attr("height", 108)
+	.attr("fill","#dddddd");
+
+	window.drawLegendD = function(colorLegend){
+							svg5.append("path")
+								.attr("stroke", colorLegend)
+								.attr("stroke-width", 1)
+								.attr("fill", "none")
+								.attr("d",'M'+ 730 + ',' + 703 + 'L'+ 790 + ',' + 697 +'L'+ 790 + ',' + 713 +'L'+ 730 + ',' + 710 + 'L' + 730 + ',' + 707 + 'L'+ 730 + ',' + 703)
+			}
+	drawLegendD("black");
+
+	window.drawLegendBC = function(startPoint, thresArrayB, thresArrayC){
+		for (r=0;r<4;r++){
+			for(c=0;c<4;c++){
+				px = startPoint[0] + (r*15);
+				py = startPoint[1] + (c*15);
+
+				Bcolor = colorB(thresArrayB[3-c]);
+				Ccolor = colorC(thresArrayC[r]);
+
+				BcolorR = parseInt(Bcolor.split(',')[0].split('(')[1]);
+				BcolorG = parseInt(Bcolor.split(',')[1]);
+				BcolorB = parseInt(Bcolor.split(',')[2].split(')')[0]);
+
+				CcolorR = parseInt(Ccolor.split(',')[0].split('(')[1]);
+				CcolorG = parseInt(Ccolor.split(',')[1]);
+				CcolorB = parseInt(Ccolor.split(',')[2].split(')')[0]);
+
+				blendR = (BcolorR * CcolorR) / 255;
+				blendG = (BcolorG * CcolorG) / 255;
+				blendB = (BcolorB * CcolorB) / 255;
+
+				colorBlend = "rgb("+blendR.toString()+", "+blendG.toString()+", "+blendB.toString()+")";
+
+				svg5.append("rect")
+				    .attr("x", px)
+					 	.attr("y", py)
+						.attr("width", 15)
+				    .attr("height", 15)
+						.attr("fill",colorBlend);
+			}
+		}
+	}
+	drawLegendBC([730,720], [0,.25,.5,.75], [0,.25,.5,.75]);
+
+	svg5.append("text") //D
+		.text("Temperature")
+		.attr("y", 709)
+		.attr("x", 668)
+		.attr("font-size", 10)
+		.attr("font-family", "sans-serif")
+		.attr("fill", "black")
+		.attr("stroke", "black");
+
+	svg5.append("text") //B
+		.text("Soil \n Moisture")
+		.attr("y", 757)
+		.attr("x", 668)
+		.attr("font-size", 10)
+		.attr("font-family", "sans-serif")
+		.attr("fill", "black")
+		.attr("stroke", "black");
+
+	svg5.append("text") //C
+		.text("Pressure")
+		.attr("y", 792)
+		.attr("x", 743)
+		.attr("font-size", 10)
+		.attr("font-family", "sans-serif")
+		.attr("fill", "black")
+		.attr("stroke", "black");
+
+});
+
+function mouseEvent() {
+	let mouse = d3.mouse(this);
+	xMouse = parseInt(mouse[0]);
+	yMouse = parseInt(mouse[1]);
+	document.getElementById("Display_XY").innerHTML = "X= " + xMouse / svgwidth * vWidth + "     Y= " + yMouse / svgwidth * vWidth;
+	label = getContourLabel(xMouse / mapRatio, yMouse / mapRatio, contourOutput_A);
+	document.getElementById("Display_A_ContourBandThreshold_XY").innerHTML = "The mouse pointer is in A contour band with threshold value: " + label;
+}
+
+</script>
+</div>
+</body>
+</html>
