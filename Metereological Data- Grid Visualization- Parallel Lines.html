@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<style>
+		.svg5 {
+			isolation: isolate;
+		}
+	</style>
+</head>
+
+<body>
+	<svg width="800" height="800" stroke="#fff" stroke-width="0.5" id="svg5">
+		<image href="background/papertop back.PNG" style="opacity:.5; height: 101%" />
+	</svg>
+
+	<script src="https://d3js.org/d3.v4.min.js"></script>
+	<script src="https://d3js.org/d3-hsv.v0.1.min.js"></script>
+	<script src="https://d3js.org/d3-contour.v1.min.js"></script>
+	<script src="outliersFilter.js"></script>
+	<script src="simplify-edited.js"></script>
+
+	<script>
+		// function zoomFunction(){
+		// 	d3.selectAll("path")
+		// 	.attr("transform", "translate(" + d3.event.translate +
+		// 	") scale (" + d3.event.scale + ")");
+		// }
+		//
+		// var zoom = d3.zoom()
+		// 							.scaleExtent([0.2,10])
+		// 							.on("zoom", zoomFunction);
+		var svg5 = d3.select("#svg5")
+		// .attr("fill","grey")
+		// .on('mousemove', mouseEvent);
+		// .call(zoom)
+		var svgwidth = +svg5.attr("width");
+		var svgheight = +svg5.attr("height");
+
+		// svg5.call(d3.zoom()
+		// 					.scaleExtent([0,10])
+		// 					.translateExtent([[0, 0], [svgwidth, svgheight]])
+		// 						.on("zoom", function () {
+		// 										var transform = d3.zoomTransform(this);
+		// 			              svg5.attr("transform", "translate(" + transform.x + "," + transform.y + ") scale(" + transform.k + ")")
+		// 			      }))
+
+		var jsonfilename = "Data/real-paper top custom120.json";
+
+		d3.json(jsonfilename, function(error, dataset) {
+			if (error) throw error;
+
+			vWidth = dataset.width;
+			vHeight = dataset.height;
+			mapRatio = +svg5.attr("width") / vWidth;
+			latitude = vHeight;
+			longitude = vWidth;
+
+			window.normalize = function(arr) {
+				var result = arr.concat();
+				max = d3.max(result);
+				min = d3.min(result);
+				for (i = 0; i < arr.length; i++) {
+					result[i] = (result[i] - min) / (max - min);
+				}
+				return result;
+			}
+
+			console.log('Actual TSK: ', dataset.TSK);
+			filtered_TSK = filterOutliers(dataset.TSK, "TSK")
+			console.log('Filtered TSK: ', filtered_TSK);
+			console.log('Actual SMOIS: ', dataset.SMOIS);
+			filtered_SMOIS = filterOutliers(dataset.SMOIS, "SMOIS");
+			console.log('Filtered SMOIS: ', filtered_SMOIS);
+			console.log('Actual PSFC: ', dataset.PSFC);
+			filtered_PSFC = filterOutliers(dataset.PSFC, "PSFC")
+			console.log('Filtered PSFC: ', filtered_PSFC);
+			console.log('Actual ALBEDO: ', dataset.ALBEDO);
+			filtered_ALBEDO = filterOutliers(dataset.ALBEDO, "ALBEDO")
+			console.log('Filtered ALBEDO: ', filtered_ALBEDO);
+
+			normalized_TSK = normalize(filtered_TSK)
+			console.log('Normalized TSK: ', normalized_TSK);
+			normalized_SMOIS = normalize(filtered_SMOIS)
+			console.log('Normalized SMOIS: ', normalized_SMOIS);
+			normalized_PSFC = normalize(filtered_PSFC)
+			console.log('Normalized PSFC: ', normalized_PSFC);
+			normalized_ALBEDO = normalize(filtered_ALBEDO)
+			console.log('Normalized ALBEDO: ', normalized_ALBEDO);
+
+			dataset.TSK = normalized_TSK;
+			dataset.SMOIS = normalized_SMOIS;
+			dataset.PSFC = normalized_PSFC;
+			dataset.ALBEDO = normalized_ALBEDO;
+
+			window.meanMatrix = function(arr) {
+				row = latitude;
+				col = longitude;
+				var meanmat = arr.concat();
+				for (i = 2; i < row - 2; i++) {
+					for (j = 2; j < col - 2; j++) {
+						meanmat[i * latitude + j] = (arr[(i - 2) * latitude + (j - 2)] + arr[(i - 2) * latitude + (j - 1)] + arr[(i - 2) * latitude + j] + arr[(i - 2) * latitude + (j + 1)] + arr[(i - 2) * latitude + (j + 2)] +
+							arr[(i - 1) * latitude + (j - 2)] + arr[(i - 1) * latitude + (j - 1)] + arr[(i - 1) * latitude + j] + arr[(i - 1) * latitude + (j + 1)] + arr[(i - 1) * latitude + (j + 2)] +
+							arr[i * latitude + (j - 2)] + arr[i * latitude + (j - 1)] + arr[i * latitude + j] + arr[i * latitude + (j + 1)] + arr[i * latitude + (j + 2)] +
+							arr[(i + 1) * latitude + (j - 2)] + arr[(i + 1) * latitude + (j - 1)] + arr[(i + 1) * latitude + j] + arr[(i + 1) * latitude + (j + 1)] + arr[(i + 1) * latitude + (j + 2)] +
+							arr[(i + 2) * latitude + (j - 2)] + arr[(i + 2) * latitude + (j - 1)] + arr[(i + 2) * latitude + j] + arr[(i + 2) * latitude + (j + 1)] + arr[(i + 2) * latitude + (j + 2)]) / 25;
+
+					}
+				}
+				return meanmat;
+			}
+
+			meanMatrix_TSK = meanMatrix(normalized_TSK);
+			console.log('Mean Matrix TSK: ', meanMatrix_TSK);
+			meanMatrix_SMOIS = meanMatrix(normalized_SMOIS);
+			console.log('Mean Matrix SMOIS: ', meanMatrix_SMOIS);
+			meanMatrix_PSFC = meanMatrix(normalized_PSFC);
+			console.log('Mean Matrix PSFC: ', meanMatrix_PSFC);
+			meanMatrix_ALBEDO = meanMatrix(normalized_ALBEDO);
+			console.log('Mean Matrix ALBEDO: ', meanMatrix_ALBEDO);
+
+			dataset.TSK = meanMatrix_TSK;
+			dataset.SMOIS = meanMatrix_SMOIS;
+			dataset.PSFC = meanMatrix_PSFC;
+			dataset.ALBEDO = meanMatrix_ALBEDO;
+
+			window.getQuartileValue = function(arr, q) {
+				ind = arr.length * q;
+				if (ind - Math.floor(ind) == 0) {
+					res = arr[Math.floor(ind) - 1];
+					return parseFloat(res.toFixed(2));
+				} else {
+					k = Math.floor(ind) - 1;
+					f = ind - Math.floor(ind);
+					res = ((1 - f) * arr[k]) + (f * arr[k + 1]);
+					return parseFloat(res.toFixed(2));
+				}
+			}
+
+			window.getQuartiles = function(arr) {
+				var values = arr.concat();
+				// Then sort
+				values.sort(function(a, b) {
+					return a - b;
+				});
+				var q1 = getQuartileValue(values, .25);
+				var q2 = getQuartileValue(values, .5);
+				var q3 = getQuartileValue(values, .75);
+
+				return [0, q1, q2, q3]
+			}
+
+			C = dataset.PSFC;
+			D = dataset.TSK;
+			B = dataset.SMOIS;
+			A = dataset.ALBEDO;
+
+			thresholds_A = getQuartiles(A);
+			thresholds_B = getQuartiles(B);
+			thresholds_C = getQuartiles(C);
+			thresholds_D = getQuartiles(D);
+
+			console.log('A quartiles:', thresholds_A);
+			console.log('B quartiles:', thresholds_B);
+			console.log('C quartiles:', thresholds_C);
+			console.log('D quartiles:', thresholds_D);
+
+
+			colorD = "white";
+			colorB = "#f44345";
+			colorC = "#4345f4";
+			var i0 = d3.interpolateHsvLong(d3.hsv(120, 1, 0.65), d3.hsv(60, 1, 0.90)),
+				i1 = d3.interpolateHsvLong(d3.hsv(60, 1, 0.90), d3.hsv(0, 0, 0.95)),
+				interpolateTerrain = function(t) {
+					return t < 0.5 ? i0(t * 2) : i1((t - 0.5) * 2);
+				},
+				color = d3.scaleSequential(interpolateTerrain).domain([0, 1]);
+
+
+			contourOutput_A = d3.contours()
+				.size([dataset.width, dataset.height])
+				.thresholds(thresholds_A)
+				(A)
+			contourOutput_B = d3.contours()
+				.size([dataset.width, dataset.height])
+				.thresholds(thresholds_B)
+				(B)
+			contourOutput_C = d3.contours()
+				.size([dataset.width, dataset.height])
+				.thresholds(thresholds_C)
+				(C)
+			contourOutput_D = d3.contours()
+				.size([dataset.width, dataset.height])
+				.thresholds(thresholds_D)
+				(D)
+
+			console.log('The A contours are: ', contourOutput_A);
+			console.log('The B contours are: ', contourOutput_B);
+			console.log('The C contours are: ', contourOutput_C);
+			console.log('The D contours are: ', contourOutput_D);
+
+			window.inside = function(point, poly) {
+				// ray-casting algorithm based on
+				// http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+				var x = point[0],
+					y = point[1];
+				var inside = false;
+				for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+					var xi = poly[i][0],
+						yi = poly[i][1];
+					var xj = poly[j][0],
+						yj = poly[j][1];
+					var intersect = ((yi > y) != (yj > y)) &&
+						(x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+					if (intersect) inside = !inside;
+				}
+				return inside;
+			};
+
+			window.getContourLabel = function(xMouse, yMouse, contourOutput) {
+				contourWithPointTreshold = 0;
+				for (index = 0; index < contourOutput.length; index++) {
+					for (i = 0; i < contourOutput[index].coordinates.length; i++) {
+						// isInside = inside([xMouse/mapRatio,yMouse/mapRatio],contourOutput[index].coordinates[i][0]);
+						isInside = inside([xMouse, yMouse], contourOutput[index].coordinates[i][0]);
+						// IsCursorInContour(isInside,contourOutput_p[index]);
+						if (isInside == true) {
+							if (contourOutput[index].coordinates[i].length == 1) {
+								// contour doesn't have holes in it
+								contourWithPointTreshold = contourOutput[index].value;
+							} else {
+								//cotour has holes in it
+								inHoleFlag = 0;
+								for (j = 1; j < contourOutput[index].coordinates[i].length; j++) {
+									// inHole = inside([xMouse/mapRatio,yMouse/mapRatio],contourOutput[index].coordinates[i][j]);
+									inHole = inside([xMouse, yMouse], contourOutput[index].coordinates[i][j]);
+									if (inHole == true) {
+										// inside a hole, then check if it is in subsequent smaller threshold holes or not
+										inHoleFlag++;
+										for (k = index - 1; k >= 0; k--) {
+											for (l = 0; l < contourOutput[k].coordinates.length; l++) {
+												if (contourOutput[k].coordinates[l].length == 1) {
+													continue;
+												} else {
+													for (m = 1; m < contourOutput[k].coordinates[l].length; m++) {
+														// if (inside([xMouse/mapRatio,yMouse/mapRatio],contourOutput[k].coordinates[l][m]) == true){
+														if (inside([xMouse, yMouse], contourOutput[k].coordinates[l][m]) == true) {
+															// inside on more level inside
+															inHoleFlag++;
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+								contourWithPointTreshold = contourOutput[index - inHoleFlag].value;
+							}
+						}
+					}
+				}
+				return contourWithPointTreshold;
+			}
+
+			// draw the individual contour lines
+			window.drawA = function() {
+				svg5.selectAll("path")
+					.data(contourOutput_A)
+					.enter().append("path")
+					.attr("d", d3.geoPath(d3.geoIdentity().scale(mapRatio)))
+					.attr("fill", function(d) {
+						return color(d.value);
+					})
+					// .attr("opacity", .5)
+					.attr("stroke", "black")
+					.attr("stroke-width", .5)
+				// .attr("stroke-opacity", .1);
+			};
+			// drawA();
+			window.drawB = function() {
+				svg5.selectAll("path")
+					.data(contourOutput_B)
+					.enter().append("path")
+					.attr("d", d3.geoPath(d3.geoIdentity().scale(mapRatio)))
+					.attr("fill", function(d) {
+						return color(d.value);
+					})
+					// .attr("opacity", .5)
+					.attr("stroke", "black")
+					.attr("stroke-width", .5)
+				// .attr("stroke-opacity", .1);
+			};
+			// drawB();
+			window.drawC = function() {
+				svg5.selectAll("path")
+					.data(contourOutput_C)
+					.enter().append("path")
+					.attr("d", d3.geoPath(d3.geoIdentity().scale(mapRatio)))
+					.attr("fill", function(d) {
+						return color(d.value)
+					})
+					// .attr("opacity", .5)
+					.attr("stroke", "black")
+					.attr("stroke-width", .5)
+				// .attr("stroke-opacity", .1);
+			};
+			// drawC();
+			window.drawD = function() {
+				svg5.selectAll("path")
+					.data(contourOutput_D)
+					.enter().append("path")
+					.attr("d", d3.geoPath(d3.geoIdentity().scale(mapRatio)))
+					// .attr("fill", "grey")
+					.attr("fill", function(d) {
+						return color(d.value)
+					})
+					// .attr("opacity", .5)
+					.attr("stroke", "black")
+					.attr("stroke-width", .5)
+				// .attr("opacity", .3);
+			};
+			// drawD();
+
+			window.polygonArea = function(pointArray) {
+				area = 0; // Accumulates area
+				numPoints = pointArray.length;
+				j = numPoints - 1;
+				X = new Array(pointArray.length);
+				Y = new Array(pointArray.length);
+
+				for (i = 0; i < pointArray.length; i++) {
+					X[i] = pointArray[i][0];
+					Y[i] = pointArray[i][1];
+				}
+
+				for (i = 0; i < numPoints; i++) {
+					area += (X[j] + X[i]) * (Y[j] - Y[i]);
+					j = i; //j is previous vertex to i
+				}
+				return area / 2;
+			}
+
+			svg5.append("path")
+				.attr("stroke", "black")
+				.attr("fill", "none")
+				.attr("stroke-width", 2)
+				.attr("d", "M 0 0 L 0 800 L 800 800 L 800 0 L 0 0")
+
+			var lineGenerator = d3.line()
+				.curve(d3.curveLinear)
+
+			window.drawlineSimple = function(line) {
+				line = line.map(function(x) {
+					return [x[0] * mapRatio, x[1] * mapRatio];
+				})
+				lineout = lineGenerator(line)
+				svg5.append("path")
+					.attr("stroke", "black")
+					.attr("stroke-width", .3)
+					.attr("stroke-opacity", 1)
+					// .attr("stroke-linejoin", "mitter")
+					.attr("d", lineout)
+			};
+
+			var barX = [];
+			var barY = [];
+			var FixsidesforBCflag = 0;
+
+			thickness = 5;
+
+			window.drawBars2 = function(line, currentContour) {
+
+				// numCut = Math.floor(lineLen)*3;
+				numCut = 30;
+				line = line.map(function(x) {
+					return [x[0] * mapRatio, x[1] * mapRatio];
+				})
+				angle = Math.atan2(line[1][1] - line[0][1], line[1][0] - line[0][0]);
+
+				lineLen = Math.sqrt(Math.pow((line[0][0] - line[1][0]), 2) + Math.pow((line[0][1] - line[1][1]), 2));
+				numCut = Math.floor(lineLen * 1.5);
+
+				for (x = 0; x <= numCut + 1; x++) {
+					// cutLine.push([(lineSlice[0][0]+lineSlice[1][0])*(i/(numCut+1)),(lineSlice[0][1]+lineSlice[1][1])*(i/(numCut+1))]);
+					PointX = line[0][0] + (line[1][0] - line[0][0]) * (x / (numCut + 1));
+					PointY = line[0][1] + (line[1][1] - line[0][1]) * (x / (numCut + 1));
+
+					var lineStrokeWidth = thickness * getContourLabel(PointX / mapRatio, PointY / mapRatio, contourOutput_D);
+
+					barX.push(PointX);
+					barY.push(PointY);
+
+					// Light
+					bcolor = colorB;
+					ccolor = colorC;
+					dcolor = colorD;
+					bval = getContourLabel(PointX / mapRatio, PointY / mapRatio, contourOutput_B);
+					// console.log('Temp threshold at ', PointX, ' & ', PointY, 'is: ', bval);
+					bdist = thickness * bval;
+					cval = getContourLabel(PointX / mapRatio, PointY / mapRatio, contourOutput_C);
+					// console.log('Soil threshold at ', PointX, ' & ', PointY, 'is: ', cval);
+					cdist = thickness * cval;
+					// cdist = 15*threshval;
+					dval = getContourLabel(PointX / mapRatio, PointY / mapRatio, contourOutput_D);
+					// console.log('Soil threshold at ', PointX, ' & ', PointY, 'is: ', cval);
+					ddist = thickness * dval;
+
+					// PointX = PointX * mapRatio;
+					// PointY = PointY * mapRatio;
+
+					PointX1 = Math.sin(angle) * (thickness / 2) + PointX;
+					PointY1 = -Math.cos(angle) * (thickness / 2) + PointY;
+					PointX2 = -Math.sin(angle) * (thickness / 2) + PointX;
+					PointY2 = Math.cos(angle) * (thickness / 2) + PointY;
+
+					bFlag = 1;
+
+					// draw D
+					PointDX1 = Math.sin(angle) * (ddist / 2) + PointX;
+					PointDY1 = -Math.cos(angle) * (ddist / 2) + PointY;
+					PointDX2 = -Math.sin(angle) * (ddist / 2) + PointX;
+					PointDY2 = Math.cos(angle) * (ddist / 2) + PointY;
+
+					if (ddist > 0) {
+						svg5.append("path")
+							.attr("stroke", colorD)
+							.attr("stroke-width", 1)
+							// .attr("fill", colorD)
+							// .attr("stroke-linecap", "round")
+							.attr("d", lineGenerator([
+								[PointDX1, PointDY1],
+								[PointDX2, PointDY2]
+							]))
+					}
+
+					if (x == 0) {
+						if (bFlag == 2) {
+
+							x1 = Math.sin(angle) * ((thickness / 2) + cdist) + PointX;
+							y1 = -Math.cos(angle) * ((thickness / 2) + cdist) + PointY;
+							x2 = -Math.sin(angle) * ((thickness / 2) + bdist) + PointX;
+							y2 = Math.cos(angle) * ((thickness / 2) + bdist) + PointY;
+
+							if (bdist > 0) {
+								svg5.append("path")
+									.attr("stroke", colorB)
+									.attr("stroke-width", 1)
+									// .attr("fill", colorD)
+									// .attr("stroke-linecap", "round")
+									.attr("d", lineGenerator([
+										[PointX2, PointY2],
+										[x2, y2]
+									]))
+							}
+							if (cdist > 0) {
+								svg5.append("path")
+									.attr("stroke", colorC)
+									.attr("stroke-width", 1)
+									// .attr("fill", colorD)
+									// .attr("stroke-linecap", "round")
+									.attr("d", lineGenerator([
+										[PointX1, PointY1],
+										[x1, y1]
+									]))
+							}
+						} else {
+							x1 = Math.sin(angle) * ((thickness / 2) + bdist) + PointX;
+							y1 = -Math.cos(angle) * ((thickness / 2) + bdist) + PointY;
+							x2 = -Math.sin(angle) * ((thickness / 2) + cdist) + PointX;
+							y2 = Math.cos(angle) * ((thickness / 2) + cdist) + PointY;
+
+							if (bdist > 0) {
+								svg5.append("path")
+									.attr("stroke", colorB)
+									.attr("stroke-width", 1)
+									// .attr("fill", colorD)
+									// .attr("stroke-linecap", "round")
+									.attr("d", lineGenerator([
+										[PointX1, PointY1],
+										[x1, y1]
+									]))
+							}
+							if (cdist > 0) {
+								svg5.append("path")
+									.attr("stroke", colorC)
+									.attr("stroke-width", 1)
+									// .attr("fill", colorD)
+									// .attr("stroke-linecap", "round")
+									.attr("d", lineGenerator([
+										[PointX2, PointY2],
+										[x2, y2]
+									]))
+							}
+						}
+					} else {
+						if (bFlag == 2) {
+
+							x1 = Math.sin(angle) * ((thickness / 2) + cdist) + PointX;
+							y1 = -Math.cos(angle) * ((thickness / 2) + cdist) + PointY;
+							x2 = -Math.sin(angle) * ((thickness / 2) + bdist) + PointX;
+							y2 = Math.cos(angle) * ((thickness / 2) + bdist) + PointY;
+
+							if (bdist > 0) {
+								svg5.append("path")
+									.attr("stroke", colorB)
+									.attr("stroke-width", 1)
+									// .attr("fill", colorD)
+									// .attr("stroke-linecap", "round")
+									.attr("d", lineGenerator([
+										[PointX2, PointY2],
+										[x2, y2]
+									]))
+							}
+							if (cdist > 0) {
+								svg5.append("path")
+									.attr("stroke", colorC)
+									.attr("stroke-width", 1)
+									// .attr("fill", colorD)
+									// .attr("stroke-linecap", "round")
+									.attr("d", lineGenerator([
+										[PointX1, PointY1],
+										[x1, y1]
+									]))
+							}
+						} else {
+
+							x1 = Math.sin(angle) * ((thickness / 2) + bdist) + PointX;
+							y1 = -Math.cos(angle) * ((thickness / 2) + bdist) + PointY;
+							x2 = -Math.sin(angle) * ((thickness / 2) + cdist) + PointX;
+							y2 = Math.cos(angle) * ((thickness / 2) + cdist) + PointY;
+
+							if (bdist > 0) {
+								svg5.append("path")
+									.attr("stroke", colorB)
+									.attr("stroke-width", 1)
+									// .attr("fill", colorD)
+									// .attr("stroke-linecap", "round")
+									.attr("d", lineGenerator([
+										[PointX1, PointY1],
+										[x1, y1]
+									]))
+							}
+							if (cdist > 0) {
+								svg5.append("path")
+									.attr("stroke", colorC)
+									.attr("stroke-width", 1)
+									// .attr("fill", colorD)
+									// .attr("stroke-linecap", "round")
+									.attr("d", lineGenerator([
+										[PointX2, PointY2],
+										[x2, y2]
+									]))
+							}
+						}
+					}
+
+
+				}
+			}
+
+			gridRowNumber = 15;
+			gridColumnNumber = 15;
+
+			gridRowPointsArray = [];
+			gridColumnPointsArray = [];
+
+			window.drawRowPoints = function() {
+				// numCut = gridRowNumber;
+				for (r = 1; r < gridRowNumber + 1; r++) {
+					gridRowPointsArray.push(parseFloat(((vWidth) * (r / (gridRowNumber + 1))).toFixed(1)));
+					drawlineSimple([
+						[0, gridRowPointsArray[r - 1]],
+						[vWidth, gridRowPointsArray[r - 1]]
+					]);
+					drawBars2([
+						[0, gridRowPointsArray[r - 1]],
+						[vWidth, gridRowPointsArray[r - 1]]
+					], [
+						[0, 0],
+						[0, svgwidth],
+						[svgwidth, svgheight],
+						[svgheight, 0]
+					]);
+				}
+				console.log("Row Cut Points: ", gridRowPointsArray);
+			}
+			drawRowPoints();
+
+			window.drawColumnPoints = function() {
+				// numCut = gridRowNumber;
+				for (c = 1; c < gridColumnNumber + 1; c++) {
+					gridColumnPointsArray.push(parseFloat(((vHeight) * (c / (gridColumnNumber + 1))).toFixed(1)));
+					drawlineSimple([
+						[gridColumnPointsArray[c - 1], 0],
+						[gridColumnPointsArray[c - 1], vHeight]
+					]);
+					drawBars2([
+						[gridColumnPointsArray[c - 1], 0],
+						[gridColumnPointsArray[c - 1], vHeight]
+					], [
+						[0, 0],
+						[0, svgwidth],
+						[svgwidth, svgheight],
+						[svgheight, 0]
+					]);
+				}
+				console.log("Column Cut Points: ", gridColumnPointsArray);
+			}
+			drawColumnPoints();
+
+			svg5.append("rect")
+				.attr("x", 702)
+				.attr("y", 684)
+				.attr("width", 90)
+				.attr("height", 112)
+				.attr("fill", "#dddddd");
+
+			svg5.append("text")
+				.text("Soil Moisture")
+				.attr("x", 722)
+				.attr("y", 720)
+				.attr("font-size", 10)
+				.attr("font-family", "sans-serif")
+				.attr("fill", "black")
+				.attr("stroke", "black");
+
+			svg5.append("text")
+				.text("Pressure")
+				.attr("x", 726)
+				.attr("y", 755)
+				.attr("font-size", 10)
+				.attr("font-family", "sans-serif")
+				.attr("fill", "black")
+				.attr("stroke", "black");
+
+			svg5.append("text")
+				.text("Temperature")
+				.attr("x", 722)
+				.attr("y", 788)
+				.attr("font-size", 10)
+				.attr("font-family", "sans-serif")
+				.attr("fill", "black")
+				.attr("stroke", "black");
+
+			window.drawLegend = function(line, thresArray, constLength, barcolor) {
+				lineout = lineGenerator(line)
+				svg5.append("path")
+					.attr("stroke", "black")
+					.attr("stroke-width", .5)
+					.attr("stroke-opacity", 1)
+					// .attr("stroke-linejoin", "mitter")
+					.attr("d", lineout)
+				numCut = 40;
+				for (x = 1; x <= numCut; x++) {
+					PointX = line[0][0] + (line[1][0] - line[0][0]) * (x / (numCut + 1));
+					PointY = line[0][1] + (line[1][1] - line[0][1]) * (x / (numCut + 1));
+					angle = Math.atan2(line[1][1] - line[0][1], line[1][0] - line[0][0]);
+
+					barLength = thresArray[Math.floor((x - 1) / 10)];
+
+					demoy1 = -Math.cos(angle) * 10 + PointY;
+					demoy2 = Math.cos(angle) * 10 + PointY;
+
+					if (demoy1 < demoy2) {
+						x1 = Math.sin(angle) * barLength * constLength + PointX;
+						y1 = -Math.cos(angle) * barLength * constLength + PointY;
+						svg5.append("path")
+							.attr("stroke", barcolor)
+							.attr("stroke-width", 3)
+							.attr("d", 'M' + x1 + ',' + y1 + 'L' + PointX + ',' + PointY)
+					} else {
+						x2 = -Math.sin(angle) * barLength * constLength + PointX;
+						y2 = Math.cos(angle) * barLength * constLength + PointY;
+						svg5.append("path")
+							.attr("stroke", barcolor)
+							.attr("stroke-width", 1)
+							.attr("d", 'M' + x2 + ',' + y2 + 'L' + PointX + ',' + PointY)
+					}
+				}
+			}
+			drawLegend([
+				[712, 706],
+				[788, 706]
+			], [0, .25, .5, .75], thickness, colorB);
+			drawLegend([
+				[712, 741],
+				[788, 741]
+			], [0, .25, .5, .75], thickness, colorC);
+			drawLegend([
+				[712, 776],
+				[788, 776]
+			], [0, .25, .5, .75], thickness, colorD);
+
+		});
+	</script>
+
+</body>
+
+</html>
