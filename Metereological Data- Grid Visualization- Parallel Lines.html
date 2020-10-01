@@ -151,6 +151,25 @@
 				return [0, q1, q2, q3]
 			}
 
+			window.getQuartiles10 = function(arr) {
+				var values = arr.concat();
+				// Then sort
+				values.sort(function(a, b) {
+					return a - b;
+				});
+				var q1 = getQuartileValue(values, .1);
+				var q2 = getQuartileValue(values, .2);
+				var q3 = getQuartileValue(values, .3);
+				var q4 = getQuartileValue(values, .4);
+				var q5 = getQuartileValue(values, .5);
+				var q6 = getQuartileValue(values, .6);
+				var q7 = getQuartileValue(values, .7);
+				var q8 = getQuartileValue(values, .8);
+				var q9 = getQuartileValue(values, .9);
+
+				return [0, q1, q2, q3, q4, q5, q6, q7, q8, q9]
+			}
+
 			C = dataset.PSFC;
 			D = dataset.TSK;
 			B = dataset.SMOIS;
@@ -199,6 +218,25 @@
 			console.log('The B contours are: ', contourOutput_B);
 			console.log('The C contours are: ', contourOutput_C);
 			console.log('The D contours are: ', contourOutput_D);
+
+			// draw the individual contour lines
+			contourOutput_E = d3.contours()
+				.size([dataset.width, dataset.height])
+				.thresholds(getQuartiles10(B))
+				(B)
+
+			window.drawContour = function() {
+				svg5.selectAll("path")
+					.data(contourOutput_E)
+					.enter().append("path")
+					.attr("d", d3.geoPath(d3.geoIdentity().scale(mapRatio)))
+					.attr("fill", "none")
+					// .attr("opacity", .5)
+					.attr("stroke", "black")
+					.attr("stroke-width", 1)
+				// .attr("stroke-opacity", .1);
+			};
+			drawContour();
 
 			window.inside = function(point, poly) {
 				// ray-casting algorithm based on
